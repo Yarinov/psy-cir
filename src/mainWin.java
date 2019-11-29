@@ -1,6 +1,7 @@
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.wb.swt.SWTResourceManager;
@@ -8,7 +9,15 @@ import org.eclipse.wb.swt.SWTResourceManager;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 
 import org.eclipse.swt.SWT;
@@ -30,6 +39,8 @@ public class mainWin {
 
 	private Text text;
 
+	static List imageForTest;
+
 	// Instruction Part
 	int circleWidthStart, circleHeightStart;
 	private Label instructionLabel;
@@ -42,6 +53,24 @@ public class mainWin {
 	static boolean firstSpaceAddButtonFlag, firstSpaceMinButtonFlag, numOfButtons1ButtonFlag, numOfButtons2ButtonFlag,
 			pointColorGreenButtonFlag, pointColorBlueButtonFlag, pointColorRedButtonFlag, pointShapeRecButtonFlag,
 			pointShapeCirButtonFlag;
+	
+	static File selectedDir;
+
+	// array of supported extensions (use a List if you prefer)
+	static final String[] EXTENSIONS = new String[] { "gif", "png", "bmp", "jpg", "jpeg" };
+
+	static final FilenameFilter IMAGE_FILTER = new FilenameFilter() {
+
+		@Override
+		public boolean accept(final File dir, final String name) {
+			for (final String ext : EXTENSIONS) {
+				if (name.endsWith("." + ext)) {
+					return (true);
+				}
+			}
+			return (false);
+		}
+	};
 
 	/**
 	 * Launch the application.
@@ -88,7 +117,7 @@ public class mainWin {
 		screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 
 		shell = new Shell(display);
-		shell.setText("Snippet 120");
+		shell.setText("מבחן עיגולים - תוכנה");
 		shell.setSize((int) screenSize.getWidth(), (int) screenSize.getHeight());
 
 		Label lblNewLabel = new Label(shell, SWT.NONE);
@@ -113,11 +142,25 @@ public class mainWin {
 		openInstructions.setBounds(1186, 153, 93, 30);
 		openInstructions.setText("Start");
 
+		Label imageLoadText = new Label(shell, SWT.NONE);
+		imageLoadText.setFont(SWTResourceManager.getFont("Sans", 14, SWT.NORMAL));
+		imageLoadText.setForeground(SWTResourceManager.getColor(SWT.COLOR_DARK_GREEN));
+		imageLoadText.setBounds(959, 60, 129, 28);
+		imageLoadText.setText("תמונות טעונות");
+		imageLoadText.setVisible(false);
+
 		openInstructions.addListener(SWT.Selection, new Listener() {
 
 			@Override
 			public void handleEvent(Event arg0) {
-				new instructionWindow(display);
+				if (imageForTest == null) {
+					MessageBox box = new MessageBox(shell, SWT.CANCEL | SWT.OK);
+					box.setText("Error");
+					box.setMessage("לא נטענו תמונות");
+
+					box.open();
+				} else
+					new instructionWindow(display);
 			}
 		});
 
@@ -142,7 +185,7 @@ public class mainWin {
 				JFileChooser chooser;
 				chooser = new JFileChooser();
 				chooser.setCurrentDirectory(new java.io.File("."));
-				chooser.setDialogTitle("Select a folder");
+				chooser.setDialogTitle("בחר תיקיית תמונות");
 				chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
 				// disable the "All files" options
@@ -150,9 +193,34 @@ public class mainWin {
 
 				if (chooser.showOpenDialog(new Component() {
 				}) == JFileChooser.APPROVE_OPTION) {
+					
+					imageForTest = new ArrayList<File>();
 
 					Folder imgSrc = new Folder(chooser.getSelectedFile().toString(),
 							chooser.getSelectedFile().listFiles());
+
+					selectedDir = chooser.getSelectedFile();
+
+					for (final File f : selectedDir.listFiles(IMAGE_FILTER)) {
+						BufferedImage img = null;
+
+						try {
+							img = ImageIO.read(f);
+
+							// you probably want something more involved here
+							// to display in your UI
+							System.out.println("image: " + f.getName());
+							System.out.println(" width : " + img.getWidth());
+							System.out.println(" height: " + img.getHeight());
+							System.out.println(" size  : " + f.length());
+							
+							imageForTest.add(f);
+						} catch (final IOException e) {
+							// handle errors here
+						}
+					}
+					imageLoadText.setVisible(true);
+				
 					System.out.println("getCurrentDirectory(): " + chooser.getCurrentDirectory());
 					System.out.println("getSelectedFile() : " + chooser.getSelectedFile());
 				} else {
@@ -531,5 +599,4 @@ public class mainWin {
 		}
 
 	}
-
 }
