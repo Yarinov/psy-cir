@@ -1,20 +1,37 @@
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Toolkit;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Timer;
+import java.util.concurrent.TimeUnit;
 
+
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.wb.swt.SWTResourceManager;
 
 public class progremRunWindow {
 
@@ -28,6 +45,8 @@ public class progremRunWindow {
 	static int testCounter = 0;
 
 	Color pointsColor;
+	
+	Timer timer;
 
 	boolean spaceEffect = true;
 
@@ -35,6 +54,12 @@ public class progremRunWindow {
 
 	int circleWidthStart = (int) screenSize.getWidth() / 2 - 200;
 	int circleHeightStart = (int) screenSize.getHeight() / 2 - 200;
+
+	static File testResultFile;
+	static List<File> testFiles;
+	static int fileNumber = 0;
+	
+	static picWin picWin;
 
 	/**
 	 * Launch the application.
@@ -56,10 +81,23 @@ public class progremRunWindow {
 	 * Open the window.
 	 */
 	public void open() {
+		testResultFile = new File("result.txt");
+		try {
+			if (testResultFile.createNewFile()) {
+				System.out.println("file.txt File Created in Project root directory");
+			} else
+				System.out.println("File file.txt already exists in the project root directory");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		progremRunWindow window = new progremRunWindow();
 		pointList = new ArrayList<Point>();
 		testResult = new HashMap<Integer, Integer>();
-
+		
+		
+		testFiles = mainWin.imageForTest;
+		
 		if (mainWin.pointColorGreenButtonFlag) {
 			pointsColor = Display.getCurrent().getSystemColor(SWT.COLOR_GREEN);
 		} else if (mainWin.pointColorBlueButtonFlag) {
@@ -73,6 +111,7 @@ public class progremRunWindow {
 		display = Display.getDefault();
 		createContents();
 		shell.open();
+		picWin = new picWin(display);
 		shell.layout();
 		while (!shell.isDisposed()) {
 			if (!display.readAndDispatch()) {
@@ -93,6 +132,7 @@ public class progremRunWindow {
 
 		shell.setLayout(new FillLayout());
 		final Canvas canvas = new Canvas(shell, SWT.NONE);
+		
 
 		// Print the first circle
 		canvas.addPaintListener(new PaintListener() {
@@ -261,17 +301,14 @@ public class progremRunWindow {
 				if (arg0.keyCode == 0xd) {
 					testResult.put(testCounter, pointsCounter);
 					testCounter++;
+					fileNumber++;
 					pointsCounter = 0;
 					pointList.clear();
 					spaceEffect = true;
 
-					try {
-						int sleepTime = mainWin.pauseTimeInputValue * 1000;
-						Thread.sleep(sleepTime);
-					} catch (InterruptedException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
+					picWin.shell.dispose();
+					
+					picWin = new picWin(display);
 
 					canvas.addPaintListener(new PaintListener() {
 
@@ -279,6 +316,20 @@ public class progremRunWindow {
 						public void paintControl(PaintEvent e) {
 							e.gc.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
 							e.gc.fillRectangle(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
+						}
+					});
+					
+					// Print the circle
+					canvas.addPaintListener(new PaintListener() {
+						@Override
+						public void paintControl(PaintEvent e) {
+
+							canvas.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+							// Draw the circle
+							e.gc.setLineWidth(1);
+							e.gc.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
+							e.gc.drawOval(circleWidthStart, circleHeightStart, 300, 300);
+
 						}
 					});
 					System.out.println(testResult);
@@ -289,4 +340,45 @@ public class progremRunWindow {
 		});
 
 	}
+
+
+	private class picWin {
+		
+		Shell shell;
+
+		public picWin(Display display) {
+			System.out.println("Creating picWin Shell");
+
+			// =========================================
+			// Create a Shell (window) from the Display
+			// =========================================
+			shell = new Shell(display, SWT.CLOSE);
+
+			// =====================
+			// Set the Window Title
+			// =====================
+			shell.setText("Ex");
+			shell.setSize((int) screenSize.getWidth(), (int) screenSize.getHeight());
+			shell.open();
+
+			Label picLabel = new Label(shell, SWT.NONE);
+			picLabel.setImage(new Image(display, testFiles.get(fileNumber).toString()));
+			picLabel.setBounds(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
+
+		
+		    new Thread(){
+		          @Override
+		          public void run() {
+		               try {
+		                      Thread.sleep(5000); // time after which pop up will be disappeared.
+		                      shell.dispose();
+		               } catch (InterruptedException e) {
+		                      e.printStackTrace();
+		               }
+		          };
+		    }.start();
+		}
+
+	}
+
 }
