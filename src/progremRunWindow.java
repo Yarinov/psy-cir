@@ -1,37 +1,29 @@
 import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Timer;
-import java.util.concurrent.TimeUnit;
 
-
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.PaintEvent;
 import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.wb.swt.SWTResourceManager;
 
 public class progremRunWindow {
 
@@ -40,12 +32,13 @@ public class progremRunWindow {
 	private Display display;
 
 	static ArrayList<Point> pointList;
-	static HashMap<Integer, Integer> testResult;
+	static HashMap<String, Integer> testResult;
 	static int pointsCounter = 0;
 	static int testCounter = 0;
-
-	Color pointsColor;
+	static boolean testEnd = false;
 	
+	Color pointsColor;
+
 	Timer timer;
 
 	boolean spaceEffect = true;
@@ -58,7 +51,7 @@ public class progremRunWindow {
 	static File testResultFile;
 	static List<File> testFiles;
 	static int fileNumber = 0;
-	
+
 	static picWin picWin;
 
 	/**
@@ -70,7 +63,7 @@ public class progremRunWindow {
 		try {
 			progremRunWindow window = new progremRunWindow();
 			pointList = new ArrayList<Point>();
-			testResult = new HashMap<Integer, Integer>();
+			testResult = new HashMap<String, Integer>();
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -93,11 +86,10 @@ public class progremRunWindow {
 		}
 		progremRunWindow window = new progremRunWindow();
 		pointList = new ArrayList<Point>();
-		testResult = new HashMap<Integer, Integer>();
-		
-		
+		testResult = new HashMap<String, Integer>();
+
 		testFiles = mainWin.imageForTest;
-		
+
 		if (mainWin.pointColorGreenButtonFlag) {
 			pointsColor = Display.getCurrent().getSystemColor(SWT.COLOR_GREEN);
 		} else if (mainWin.pointColorBlueButtonFlag) {
@@ -132,7 +124,6 @@ public class progremRunWindow {
 
 		shell.setLayout(new FillLayout());
 		final Canvas canvas = new Canvas(shell, SWT.NONE);
-		
 
 		// Print the first circle
 		canvas.addPaintListener(new PaintListener() {
@@ -153,12 +144,14 @@ public class progremRunWindow {
 
 			@Override
 			public void keyReleased(KeyEvent arg0) {
-				
-				if(arg0.keyCode == 32) {
-					if(spaceEffect) spaceEffect = false;
-					else spaceEffect = true;
+
+				if (arg0.keyCode == 32) {
+					if (spaceEffect)
+						spaceEffect = false;
+					else
+						spaceEffect = true;
 				}
-				
+
 				canvas.addPaintListener(new PaintListener() {
 
 					@Override
@@ -240,7 +233,7 @@ public class progremRunWindow {
 						});
 					}
 
-				}else {
+				} else {
 					if (arg0.keyCode == 0x1000004) {// Press the right
 						pointList.add(new Point((int) x, (int) y));
 						pointsCounter++;
@@ -259,8 +252,9 @@ public class progremRunWindow {
 								} else {
 									e.gc.setForeground(pointsColor);
 									e.gc.setBackground(pointsColor);
-									e.gc.fillRectangle((int) x + circleWidthStart + 150, (int) y + circleHeightStart + 150,
-											mainWin.pointSizeValue, mainWin.pointSizeValue);
+									e.gc.fillRectangle((int) x + circleWidthStart + 150,
+											(int) y + circleHeightStart + 150, mainWin.pointSizeValue,
+											mainWin.pointSizeValue);
 								}
 
 							}
@@ -296,10 +290,8 @@ public class progremRunWindow {
 					}
 				}
 
-				
-
 				if (arg0.keyCode == 0xd) {
-					testResult.put(testCounter, pointsCounter);
+					testResult.put(testFiles.get(fileNumber).toString(), pointsCounter);
 					testCounter++;
 					fileNumber++;
 					pointsCounter = 0;
@@ -307,8 +299,74 @@ public class progremRunWindow {
 					spaceEffect = true;
 
 					picWin.shell.dispose();
-					
-					picWin = new picWin(display);
+
+					if (fileNumber == testFiles.size()) {
+						canvas.addPaintListener(new PaintListener() {
+
+							@Override
+							public void paintControl(PaintEvent e) {
+								e.gc.setBackground(Display.getCurrent().getSystemColor(SWT.COLOR_WHITE));
+								e.gc.fillRectangle(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
+							}
+						});
+
+						FileWriter fstream;
+						BufferedWriter out = null;
+
+						// create your filewriter and bufferedreader
+						try {
+							fstream = new FileWriter("result.txt");
+							out = new BufferedWriter(fstream);
+						} catch (IOException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+
+						// initialize the record count
+						int count = 0;
+
+						// create your iterator for your map
+						Iterator<Entry<String, Integer>> it = testResult.entrySet().iterator();
+
+						 try {
+								out.write(mainWin.nameInputText + "\n\n");
+								out.write("Image Name\t|\tPoints" + "\n");
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						
+						 while (it.hasNext() && count < testResult.size()) {
+
+						        // the key/value pair is stored here in pairs
+						        Entry<String, Integer> pairs = it.next();
+						        System.out.println("Value is " + pairs.getValue());
+
+						        // since you only want the value, we only care about pairs.getValue(), which is written to out
+						        try {
+									out.write(pairs.getKey() + "\t| " + pairs.getValue() + "\n");
+								} catch (IOException e1) {
+									// TODO Auto-generated catch block
+									e1.printStackTrace();
+								}
+
+						        // increment the record count once we have printed to the file
+						        count++;
+						    }
+						    // lastly, close the file and end
+						    try {
+								out.close();
+							} catch (IOException e1) {
+								// TODO Auto-generated catch block
+								e1.printStackTrace();
+							}
+						    
+						   
+						    new sumWin(display);
+						    
+					} else {
+						picWin = new picWin(display);
+					}
 
 					canvas.addPaintListener(new PaintListener() {
 
@@ -318,7 +376,7 @@ public class progremRunWindow {
 							e.gc.fillRectangle(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
 						}
 					});
-					
+
 					// Print the circle
 					canvas.addPaintListener(new PaintListener() {
 						@Override
@@ -341,9 +399,8 @@ public class progremRunWindow {
 
 	}
 
-
 	private class picWin {
-		
+
 		Shell shell;
 
 		public picWin(Display display) {
@@ -365,18 +422,46 @@ public class progremRunWindow {
 			picLabel.setImage(new Image(display, testFiles.get(fileNumber).toString()));
 			picLabel.setBounds(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
 
-		
-		    new Thread(){
-		          @Override
-		          public void run() {
-		               try {
-		                      Thread.sleep(5000); // time after which pop up will be disappeared.
-		                      shell.dispose();
-		               } catch (InterruptedException e) {
-		                      e.printStackTrace();
-		               }
-		          };
-		    }.start();
+			new Thread() {
+				@Override
+				public void run() {
+					try {
+						Thread.sleep(mainWin.pauseTimeInputValue * 1000); // time after which pop up will be
+																			// disappeared.
+						shell.dispose();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				};
+			}.start();
+		}
+
+	}
+
+	private class sumWin {
+
+		Shell shell;
+
+		public sumWin(Display display) {
+			System.out.println("Creating sumWin Shell");
+
+			// =========================================
+			// Create a Shell (window) from the Display
+			// =========================================
+			shell = new Shell(display, SWT.CLOSE);
+
+			// =====================
+			// Set the Window Title
+			// =====================
+			shell.setText("סיום");
+			shell.setSize((int) screenSize.getWidth(), (int) screenSize.getHeight());
+			shell.open();
+
+			Label picLabel = new Label(shell, SWT.NONE);
+			picLabel.setImage(new Image(display, mainWin.endPhoto.toString()));
+			picLabel.setBounds(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
+			
+
 		}
 
 	}
