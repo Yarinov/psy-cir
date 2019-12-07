@@ -1,5 +1,8 @@
+package cc;
+
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
@@ -23,9 +26,16 @@ import javax.swing.JFileChooser;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
+import org.eclipse.swt.events.PaintEvent;
+import org.eclipse.swt.events.PaintListener;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.ImageLoader;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Canvas;
+import org.eclipse.swt.widgets.DirectoryDialog;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -34,15 +44,16 @@ public class mainWin {
 
 	protected Shell shell;
 
-	private static progremRunWindow progremRunWindow;
+//	private static progremRunWindow progremRunWindow;
 	private static mainWin window;
+	private static runProgramWin runProgramWin;
 
 	private static Dimension screenSize;
 
 	private Text nameInputField;
 	static String nameInputText;
 
-	static List imageForTest;
+	static List<File> imageForTest;
 
 	// Instruction Part
 	int circleWidthStart, circleHeightStart;
@@ -51,29 +62,16 @@ public class mainWin {
 	// Setting Part
 	private Text pauseTimeInput, pointSizeInput;
 
-	static int pauseTimeInputValue, pointSizeValue;
+	static int pauseTimeInputValue = 3, pointSizeValue;
 
 	static boolean firstSpaceAddButtonFlag, firstSpaceMinButtonFlag, numOfButtons1ButtonFlag, numOfButtons2ButtonFlag,
-			pointColorGreenButtonFlag, pointColorBlueButtonFlag, pointColorRedButtonFlag, pointShapeRecButtonFlag,
-			pointShapeCirButtonFlag;
-	
-	static File selectedDir, instructionPhoto, endPhoto;
+			pointColorGreenButtonFlag, pointColorBlueButtonFlag, pointColorRedButtonFlag, pointColorBlackFlag,
+			pointShapeRecButtonFlag, pointShapeCirButtonFlag;
 
-	// array of supported extensions (use a List if you prefer)
-	static final String[] EXTENSIONS = new String[] { "gif", "png", "bmp", "jpg", "jpeg" };
+	static String selectedDir, instructionPhoto, endPhoto;
+	static File currentDir;
 
-	static final FilenameFilter IMAGE_FILTER = new FilenameFilter() {
-
-		@Override
-		public boolean accept(final File dir, final String name) {
-			for (final String ext : EXTENSIONS) {
-				if (name.endsWith("." + ext)) {
-					return (true);
-				}
-			}
-			return (false);
-		}
-	};
+	Label settingsLoadedLabel;
 
 	/**
 	 * Launch the application.
@@ -88,7 +86,7 @@ public class mainWin {
 			firstSpaceAddButtonFlag = true;
 
 			window = new mainWin();
-			progremRunWindow = new progremRunWindow();
+
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -122,14 +120,15 @@ public class mainWin {
 		shell = new Shell(display);
 		shell.setText("מבחן עיגולים - תוכנה");
 		shell.setSize((int) screenSize.getWidth(), (int) screenSize.getHeight());
-		
+		shell.setMaximized(true);
+
 		Label instructionPhotoIsLoadedText = new Label(shell, SWT.NONE);
 		instructionPhotoIsLoadedText.setVisible(false);
 		instructionPhotoIsLoadedText.setText("הוראות טעונות");
 		instructionPhotoIsLoadedText.setForeground(SWTResourceManager.getColor(SWT.COLOR_DARK_GREEN));
 		instructionPhotoIsLoadedText.setFont(SWTResourceManager.getFont("Sans", 14, SWT.NORMAL));
 		instructionPhotoIsLoadedText.setBounds(969, 99, 129, 28);
-		
+
 		Label endPhotoIsLoadedText = new Label(shell, SWT.NONE);
 		endPhotoIsLoadedText.setVisible(false);
 		endPhotoIsLoadedText.setText("טקסט סיום ניסוי טעון");
@@ -138,6 +137,7 @@ public class mainWin {
 		endPhotoIsLoadedText.setBounds(900, 133, 180, 28);
 
 		Label lblNewLabel = new Label(shell, SWT.NONE);
+		lblNewLabel.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
 		lblNewLabel.setBounds(1150, 60, 129, 24);
 		lblNewLabel.setText("הגדר ספריית תמונות");
 
@@ -145,10 +145,12 @@ public class mainWin {
 		selectFolderButton.setBounds(1094, 60, 44, 24);
 
 		Button settingButton = new Button(shell, SWT.NONE);
+		settingButton.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
 		settingButton.setBounds(1186, 10, 93, 30);
 		settingButton.setText("הגדרות");
 
 		Label lblNewLabel_1 = new Label(shell, SWT.NONE);
+		lblNewLabel_1.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
 		lblNewLabel_1.setText("שם");
 		lblNewLabel_1.setBounds(1235, 239, 75, 17);
 
@@ -156,6 +158,7 @@ public class mainWin {
 		nameInputField.setBounds(1037, 233, 180, 23);
 
 		Button openInstructions = new Button(shell, SWT.NONE);
+		openInstructions.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
 		openInstructions.setBounds(1186, 269, 93, 30);
 		openInstructions.setText("התחל ניסוי");
 
@@ -165,66 +168,73 @@ public class mainWin {
 		imageLoadText.setBounds(959, 60, 129, 28);
 		imageLoadText.setText("תמונות טעונות");
 		imageLoadText.setVisible(false);
-		
+
 		Label lblNewLabel_2 = new Label(shell, SWT.NONE);
-		lblNewLabel_2.setBounds(1165, 100, 114, 17);
+		lblNewLabel_2.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
+		lblNewLabel_2.setBounds(1165, 100, 129, 17);
 		lblNewLabel_2.setText("הגדר הוראות ניסוי");
-		
+
 		Label lblNewLabel_3 = new Label(shell, SWT.NONE);
+		lblNewLabel_3.setFont(SWTResourceManager.getFont("Arial", 9, SWT.BOLD));
 		lblNewLabel_3.setBounds(1139, 135, 140, 17);
 		lblNewLabel_3.setText("הגדר טקסט סיום ניסוי");
-		
+
 		Button loadinstructionButton = new Button(shell, SWT.NONE);
 		loadinstructionButton.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				
-				JFileChooser chooser;
-				chooser = new JFileChooser();
-				chooser.setCurrentDirectory(new java.io.File("."));
-				chooser.setDialogTitle("בחר קובץ הוראות");
-				chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-				
-				if (chooser.showOpenDialog(new Component() {
-				}) == JFileChooser.APPROVE_OPTION) {
-					instructionPhoto = chooser.getSelectedFile();
+
+				FileDialog fd = new FileDialog(shell, SWT.OPEN);
+
+				fd.setText("בחר קובץ הוראות");
+				fd.setFilterPath(".");
+				String[] filterExt = { "*.*", "*.jpg", "*.png", ".jpeg" };
+				fd.setFilterExtensions(filterExt);
+				instructionPhoto = fd.open();
+
+				if (instructionPhoto != null)
 					instructionPhotoIsLoadedText.setVisible(true);
-				}
-				
+
 			}
 		});
 		loadinstructionButton.setBounds(1115, 99, 44, 24);
-		
+
 		Button btnNewButton_1 = new Button(shell, SWT.NONE);
 		btnNewButton_1.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				JFileChooser chooser;
-				chooser = new JFileChooser();
-				chooser.setCurrentDirectory(new java.io.File("."));
-				chooser.setDialogTitle("בחר קובץ סיום ניסוי");
-				chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-				
-				if (chooser.showOpenDialog(new Component() {
-				}) == JFileChooser.APPROVE_OPTION) {
-					endPhoto = chooser.getSelectedFile();
+
+				FileDialog fd = new FileDialog(shell, SWT.OPEN);
+
+				fd.setText("בחר קובץ סיום ניסוי");
+				fd.setFilterPath(".");
+				String[] filterExt = { "*.*", "*.jpg", "*.png", ".jpeg" };
+				fd.setFilterExtensions(filterExt);
+				endPhoto = fd.open();
+
+				if (endPhoto != null)
 					endPhotoIsLoadedText.setVisible(true);
-				}
-				
+
 			}
 		});
 		btnNewButton_1.setBounds(1086, 133, 44, 19);
-		
+
+		settingsLoadedLabel = new Label(shell, SWT.NONE);
+		settingsLoadedLabel.setVisible(false);
+		settingsLoadedLabel.setText("הגדרות טעונות");
+		settingsLoadedLabel.setForeground(SWTResourceManager.getColor(SWT.COLOR_DARK_GREEN));
+		settingsLoadedLabel.setFont(SWTResourceManager.getFont("Sans", 14, SWT.NORMAL));
+		settingsLoadedLabel.setBounds(979, 12, 180, 28);
 
 		openInstructions.addListener(SWT.Selection, new Listener() {
 
-			
 			@Override
 			public void handleEvent(Event arg0) {
-				
+
 				nameInputText = nameInputField.getText();
-				
-				if (imageForTest == null || nameInputText.isEmpty() || endPhoto == null || instructionPhoto == null) {
+
+				if (!settingsLoadedLabel.isVisible() || imageForTest == null || nameInputText.isEmpty()
+						|| endPhoto == null || instructionPhoto == null) {
 					MessageBox box = new MessageBox(shell, SWT.CANCEL | SWT.OK);
 					box.setText("Error");
 					box.setMessage("השלם את כל הסעיפים לפני התחלת הניסוי");
@@ -253,49 +263,19 @@ public class mainWin {
 
 			private void selectFolder() {
 
-				JFileChooser chooser;
-				chooser = new JFileChooser();
-				chooser.setCurrentDirectory(new java.io.File("."));
-				chooser.setDialogTitle("בחר תיקיית תמונות");
-				chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+				DirectoryDialog fd = new DirectoryDialog(shell);
+				fd.setText("בחר תיקיית תמונות לניסוי");
+				fd.setFilterPath(".");
 
-				// disable the "All files" options
-				chooser.setAcceptAllFileFilterUsed(false);
+				imageForTest = new ArrayList<File>();
 
-				if (chooser.showOpenDialog(new Component() {
-				}) == JFileChooser.APPROVE_OPTION) {
-					
-					imageForTest = new ArrayList<File>();
+				selectedDir = fd.open();
 
-					Folder imgSrc = new Folder(chooser.getSelectedFile().toString(),
-							chooser.getSelectedFile().listFiles());
+				if (selectedDir != null) {
 
-					selectedDir = chooser.getSelectedFile();
+					currentDir = new File(selectedDir);
 
-					for (final File f : selectedDir.listFiles(IMAGE_FILTER)) {
-						BufferedImage img = null;
-
-						try {
-							img = ImageIO.read(f);
-
-							// you probably want something more involved here
-							// to display in your UI
-							System.out.println("image: " + f.getName());
-							System.out.println(" width : " + img.getWidth());
-							System.out.println(" height: " + img.getHeight());
-							System.out.println(" size  : " + f.length());
-							
-							imageForTest.add(f);
-						} catch (final IOException e) {
-							// handle errors here
-						}
-					}
 					imageLoadText.setVisible(true);
-				
-					System.out.println("getCurrentDirectory(): " + chooser.getCurrentDirectory());
-					System.out.println("getSelectedFile() : " + chooser.getSelectedFile());
-				} else {
-					System.out.println("No Selection ");
 				}
 			}
 
@@ -327,14 +307,27 @@ public class mainWin {
 			shell.setText("הוראות");
 
 			shell.setSize((int) screenSize.getWidth(), (int) screenSize.getHeight());
+			shell.setLayout(new FillLayout());
+			shell.setMaximized(true);
 			shell.open();
 
 			circleWidthStart = (int) screenSize.getWidth() / 2 - 200;
 			circleHeightStart = (int) screenSize.getHeight() / 2 - 200;
 
+			final Image image = new Image(display, instructionPhoto);
+
+			// get Image width and height
+			ImageData imgData = image.getImageData();
+			imgData = imgData.scaledTo((int) (screenSize.getWidth()), (int) (screenSize.getHeight()));
+
+			ImageLoader imageLoader = new ImageLoader();
+			imageLoader.data = new ImageData[] { imgData };
+
+			imageLoader.save(instructionPhoto, SWT.IMAGE_COPY);
+
 			instructionLabel = new Label(shell, SWT.NONE);
-			instructionLabel.setImage(new Image(display, instructionPhoto.toString()));
-			instructionLabel.setBounds(0, 0, (int) screenSize.getWidth(), (int) screenSize.getHeight());
+			instructionLabel.setBounds(0, 0, imgData.width, imgData.height);
+			instructionLabel.setImage(SWTResourceManager.getImage(instructionPhoto));
 
 			// =============================================================
 			// Register a listener for the Close event on the child Shell.
@@ -359,7 +352,11 @@ public class mainWin {
 				@Override
 				public void keyPressed(KeyEvent arg0) {
 					shell.close();
-					progremRunWindow.open();
+
+					if (!pointColorBlueButtonFlag && !pointColorGreenButtonFlag && !pointColorRedButtonFlag)
+						pointColorBlackFlag = true;
+
+					runProgramWin = new runProgramWin(Display.getCurrent());
 
 				}
 			});
@@ -378,80 +375,54 @@ public class mainWin {
 			// =========================================
 			shell = new Shell(display, SWT.CLOSE);
 
-			// =====================
-			// Set the Window Title
-			// =====================
+			shell = new Shell();
 			shell.setText("הגדרות");
-			shell.setSize(411, 511);
+			shell.setSize(411, 379);
 			shell.open();
 
-			// =============================================================
-			// Register a listener for the Close event on the child Shell.
-			// This disposes the child Shell
-			// =============================================================
-			shell.addListener(SWT.Close, new Listener() {
-				@Override
-				public void handleEvent(Event event) {
-					System.out.println("Child Shell handling Close event, about to dispose this Shell");
-					shell.dispose();
-				}
-			});
-
 			Label pointSize = new Label(shell, SWT.NONE);
-			pointSize.setBounds(269, 10, 122, 23);
+			pointSize.setBounds(269, 27, 122, 23);
 			pointSize.setText("גודל הנקודות");
 			pointSize.setFont(new Font(null, "Ariel", 16, 0));
 
-			Label equalPoints = new Label(shell, SWT.RIGHT);
-			equalPoints.setBounds(261, 68, 130, 23);
-			equalPoints.setText("הנקודות אחידות או לא");
-			equalPoints.setFont(new Font(null, "Ariel", 16, 0));
-
 			Label pointShape = new Label(shell, SWT.NONE);
 			pointShape.setFont(SWTResourceManager.getFont("Sans", 16, SWT.NORMAL));
-			pointShape.setBounds(261, 173, 130, 23);
+			pointShape.setBounds(261, 124, 130, 23);
 			pointShape.setText("צורת הנקודות");
 
 			Label pointColor = new Label(shell, SWT.NONE);
 			pointColor.setFont(SWTResourceManager.getFont("Sans", 16, SWT.NORMAL));
-			pointColor.setBounds(269, 120, 122, 23);
+			pointColor.setBounds(269, 75, 122, 23);
 			pointColor.setText("צבע הנקודות");
 
 			Label pauseTime = new Label(shell, SWT.NONE);
 			pauseTime.setFont(SWTResourceManager.getFont("Sans", 16, SWT.NORMAL));
-			pauseTime.setBounds(257, 233, 134, 23);
+			pauseTime.setBounds(261, 174, 134, 23);
 			pauseTime.setText("אורך ההפסקה");
 
 			Label numOfButtons = new Label(shell, SWT.NONE);
 			numOfButtons.setFont(SWTResourceManager.getFont("Sans", 16, SWT.NORMAL));
-			numOfButtons.setBounds(211, 287, 173, 23);
+			numOfButtons.setBounds(218, 224, 173, 23);
 			numOfButtons.setText("מקש אחד או שניים");
 
-			Button equalPointsButton = new Button(shell, SWT.CHECK);
-			equalPointsButton.setBounds(237, 73, 18, 18);
-			equalPointsButton.getSelection();
-
 			pointSizeInput = new Text(shell, SWT.BORDER);
-			pointSizeInput.setBounds(177, 16, 70, 17);
+			pointSizeInput.setBounds(177, 31, 70, 17);
 
 			Label lblNewLabel = new Label(shell, SWT.NONE);
-			lblNewLabel.setBounds(141, 16, 30, 17);
+			lblNewLabel.setBounds(135, 33, 30, 17);
 			lblNewLabel.setText("(1-5)");
 
-			pointShapeSection();
-
-			pointColorSection();
-
 			pauseTimeInput = new Text(shell, SWT.BORDER);
-			pauseTimeInput.setBounds(172, 233, 79, 23);
-
-			numberOfButtonsSection();
-
-			firstSpaceSection();
+			pauseTimeInput.setBounds(154, 178, 79, 23);
 
 			Button saveSettingButton = new Button(shell, SWT.NONE);
-			saveSettingButton.setBounds(141, 418, 93, 30);
+			saveSettingButton.setBounds(154, 295, 93, 30);
 			saveSettingButton.setText("אישור");
+
+			numberOfButtonsSection();
+			pointShapeSection();
+			pointColorSection();
+			firstSpaceSection();
 
 			saveSettingButton.addListener(SWT.Selection, new Listener() {
 
@@ -472,20 +443,21 @@ public class mainWin {
 
 					shell.close();
 
+					settingsLoadedLabel.setVisible(true);
+
 				}
 			});
 
 		}
 
-		// Done
 		private void pointShapeSection() {
 			Button pointShapeRecButton = new Button(shell, SWT.CHECK);
-			pointShapeRecButton.setBounds(185, 178, 70, 18);
+			pointShapeRecButton.setBounds(177, 129, 70, 18);
 			pointShapeRecButton.setText("ריבוע");
 			pointShapeRecButtonFlag = false;
 
 			Button pointShapeCirButton = new Button(shell, SWT.CHECK);
-			pointShapeCirButton.setBounds(123, 178, 56, 18);
+			pointShapeCirButton.setBounds(107, 129, 56, 18);
 			pointShapeCirButton.setText("עיגול");
 			pointShapeCirButtonFlag = false;
 
@@ -521,20 +493,19 @@ public class mainWin {
 
 		}
 
-		// Done
 		private void pointColorSection() {
 			Button pointColorGreenButton = new Button(shell, SWT.CHECK);
-			pointColorGreenButton.setBounds(61, 125, 56, 18);
+			pointColorGreenButton.setBounds(57, 80, 56, 18);
 			pointColorGreenButton.setText("ירוק");
 			pointColorGreenButtonFlag = false;
 
 			Button pointColorBlueButton = new Button(shell, SWT.CHECK);
-			pointColorBlueButton.setBounds(123, 125, 56, 18);
+			pointColorBlueButton.setBounds(135, 80, 56, 18);
 			pointColorBlueButton.setText("כחול");
 			pointColorBlueButtonFlag = false;
 
 			Button pointColorRedButton = new Button(shell, SWT.CHECK);
-			pointColorRedButton.setBounds(185, 125, 70, 18);
+			pointColorRedButton.setBounds(197, 80, 70, 18);
 			pointColorRedButton.setText("אדום");
 			pointColorRedButtonFlag = false;
 
@@ -597,17 +568,7 @@ public class mainWin {
 			Label label = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
 			label.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
 			label.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label.setBounds(10, 49, 381, 2);
-
-			Label label_1 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
-			label_1.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_1.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_1.setBounds(10, 106, 381, 5);
-
-			Label label_2 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
-			label_2.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_2.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_2.setBounds(10, 160, 381, 5);
+			label.setBounds(10, 67, 381, 2);
 
 			Label label_3 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
 			label_3.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
@@ -619,21 +580,26 @@ public class mainWin {
 			label_4.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
 			label_4.setBounds(10, 268, 381, 2);
 
-			Label label_5 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
-			label_5.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_5.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
-			label_5.setBounds(10, 326, 381, 2);
+			Label label_1 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
+			label_1.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
+			label_1.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
+			label_1.setBounds(10, 116, 381, 2);
+
+			Label label_2 = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
+			label_2.setForeground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
+			label_2.setBackground(SWTResourceManager.getColor(SWT.COLOR_BLACK));
+			label_2.setBounds(10, 166, 381, 2);
 
 		}
 
 		private void numberOfButtonsSection() {
 			Button numOfButtons1Button = new Button(shell, SWT.CHECK);
-			numOfButtons1Button.setBounds(110, 292, 89, 18);
+			numOfButtons1Button.setBounds(123, 229, 89, 18);
 			numOfButtons1Button.setText("מקש אחד");
 			numOfButtons1ButtonFlag = false;
 
 			Button numOfButtons2Button = new Button(shell, SWT.CHECK);
-			numOfButtons2Button.setBounds(15, 292, 93, 18);
+			numOfButtons2Button.setBounds(20, 229, 93, 18);
 			numOfButtons2Button.setText("שני מקשים");
 			numOfButtons1ButtonFlag = false;
 
